@@ -125,6 +125,27 @@ impl<W: Write + Seek> NpzWriter<W> {
         Ok(())
     }
 
+    pub fn add_scalar<N, S>(&mut self, name: N, scalar: S) -> Result<(), WriteNpzError>
+    where
+        N: Into<String>,
+        S: WritableElement,
+    {
+        self.zip.start_file(name, self.options)?;
+
+        let mut writer = BufWriter::new(&mut self.zip);
+        // TODO Assumes is_standard_layout
+        crate::npy::header::Header {
+            type_descriptor: S::type_descriptor(),
+            fortran_order: false,
+            shape: vec![],
+        }
+        .write(&mut writer).unwrap();
+        scalar.write(&mut writer).unwrap();
+        writer.flush().unwrap();
+
+        Ok(())
+    }
+
     /// Calls [`.finish()`](ZipWriter::finish) on the zip file and
     /// [`.flush()`](Write::flush) on the writer, and then returns the writer.
     ///
